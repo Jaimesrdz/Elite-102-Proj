@@ -21,13 +21,57 @@ def create_acc():
         print("Account created successfully!")
     except mysql.connector.IntegrityError:
         print("Email already in use. Please choose a different email.")
-        create_acc()
-
+        
+#login
 def login():
-    username = input("Enter your username: ")
+    email = input("Enter your email: ")
     password = input("Enter your password: ")
 
-create_acc()
+    #fetchhone stores the user with the correct email and password
+    cursor.execute("SELECT user_name FROM customers WHERE user_email = %s AND BINARY password = %s", (email, password))
+    user = cursor.fetchone()
 
+    if user:
+        print(f"Login successful! Welcome, {user}")
+    else:
+        print("Invalid email or password.")
+        login()
+def delete_account():
+    email = input("Enter your email: ")
+    password = input("Enter your password: ")
+
+    cursor.execute("SELECT * FROM customers WHERE user_email = %s AND password = %s", (email, password))
+    user = cursor.fetchone()
+
+    if user:
+        cursor.execute("DELETE FROM customers WHERE user_email = %s", (email,))
+        connection.commit()
+        print("Account deleted successfully!")
+    else:
+        print("Invalid email or password.")
+
+#main menu
+def main():
+    while True:
+        print("\n Welcome to Chase Bank.")
+        print("1. Create Account")
+        print("2. Delete Account")
+        print("3. Login")
+        print("4. Exit")
+        choice = input("Enter your choice: ")
+
+        if choice == "1":
+            create_acc()
+        elif choice == "2":
+            delete_account()
+        elif choice == "3":
+            login()
+        elif choice == "4":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+main()
 cursor.close()
 connection.close()
