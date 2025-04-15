@@ -1,17 +1,52 @@
 import mysql.connector
+import re
 
-connection = mysql.connector.connect(user='root', database='example', password='creeperS!1')
+connection = mysql.connector.connect(user='root', database='example', password='PassworD!1')
 
 cursor = connection.cursor()
 
-# Create account function
-def create_acc():
-    name = input("Enter your name: ")
-    email = input("Enter your email: ")
-    phone = input("Enter your phone number: ")
-    password = input("Enter your password: ")
+# verify valid emails
+def verify_email(email):
+    pattern ="[a-zA-Z0-9]+@[a-zA-Z]+\.(com|edu|net)"
+    return re.search(pattern, email)
 
-    # Check if email already in use
+#veryfy phone
+def verify_phone(phone):
+    pattern = "^[1-9]\d{2}-\d{3}-\d{4}"
+    return re.search(pattern, phone)
+
+# back function
+def back(x):
+    if x.lower() == "x":
+        return True
+
+# create account function
+def create_acc():
+    print("press x to return to main menu")
+    name = input("Enter your name: ")
+    if back(name):
+        return
+    while True:
+        email = input("Enter your email: ")
+        if verify_email(email):
+            break
+        elif back(email):
+            return
+        else:
+            print("Invalid Email")
+    while True:
+        phone = input("Enter your phone number: ")
+        if verify_phone(phone):
+            break
+        elif back(phone):
+            return
+        else:
+            print("Invalid Phone Number")
+    password = input("Enter your password: ")
+    if back(password):
+        return
+
+    # check if email or phone already in use
     try:
         cursor.execute(
             "INSERT INTO customers (user_name, user_email, phone_number, balance, password) VALUES (%s, %s, %s, %s, %s)",
@@ -29,7 +64,7 @@ def login():
     email = input("Enter your email: ")
     password = input("Enter your password: ")
 
-    # Fetch the user with the correct email and password
+    # fetch the user with the correct email and password
     cursor.execute("SELECT user_name FROM customers WHERE user_email = %s AND BINARY password = %s", (email, password))
     user = cursor.fetchone()
 
@@ -51,14 +86,14 @@ def delete_account():
     if user:
         cursor.execute("DELETE FROM customers WHERE user_email = %s", (logged_in_user_email,))
         connection.commit()
-        logged_in_user_email = None  # Reset the email
+        logged_in_user_email = None  # reset the email
         print("Account deleted successfully!")
-        return True  # Indicate that the account was deleted
+        return True  # the account was deleted
     else:
         print("Invalid email or password.")
-        return False  # Indicate that the account was not deleted
+        return False  # the account was not deleted
 
-#Check Balance
+#check Balance
 def check_balance():
     global logged_in_user_email 
 
@@ -68,7 +103,7 @@ def check_balance():
 
 
 
-#Deposit funds
+#deposit funds
 def deposit():
     global logged_in_user_email
 
@@ -76,7 +111,7 @@ def deposit():
         deposit_funds = float(input("Enter deposit amount: "))
 
         if deposit_funds <= 0:
-                print("Deposit amount must be greater than zero.")
+                print("Deposit amount must be greater than zero.") #make sure its not 0 or less
 
         else:
             cursor.execute("UPDATE customers SET balance = balance + %s WHERE user_email = %s", (deposit_funds, logged_in_user_email))
@@ -87,7 +122,7 @@ def deposit():
         print("Invalid amount")
 
 
-#Withdraw
+#withdraw
 def withdraw():
     global logged_in_user_email
 
@@ -97,6 +132,7 @@ def withdraw():
         if withdraw_funds <= 0:
                 print("Withdraw amount must be greater than zero.")
 
+        # same thing as on top but with a negative sign
         else:
             cursor.execute("UPDATE customers SET balance = balance - %s WHERE user_email = %s", (withdraw_funds, logged_in_user_email))
             connection.commit()
