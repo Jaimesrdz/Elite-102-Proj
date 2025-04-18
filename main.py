@@ -1,253 +1,176 @@
+import tkinter as tk
+from tkinter import messagebox
 import mysql.connector
 import re
 
+# Connect to MySQL
 connection = mysql.connector.connect(user='root', database='example', password='PassworD!1')
-
 cursor = connection.cursor()
 
-# verify valid emails
+# Global variable to store logged-in user's email
+logged_in_user_email = None
+
+# Function to verify email
 def verify_email(email):
-    pattern ="[a-zA-Z0-9]+@[a-zA-Z]+\.(com|edu|net)"
-    return re.search(pattern, email)
+    pattern = r"[a-zA-Z0-9]+@[a-zA-Z]+\.(com|edu|net)"
+    return re.match(pattern, email)
 
-#veryfy phone
+# Function to verify phone
 def verify_phone(phone):
-    pattern = "^[1-9]\d{2}-\d{3}-\d{4}"
-    return re.search(pattern, phone)
+    pattern = r"^[1-9]\d{2}-\d{3}-\d{4}$"
+    return re.match(pattern, phone)
 
-# back function
-def back(x):
-    if x.lower() == "x":
-        return True
-
-# create account function
+# Function to create account
 def create_acc():
-    print("press x to return to main menu")
-    name = input("Enter your name: ")
-    if back(name):
-        return
-    while True:
-        email = input("Enter your email: ")
-        if verify_email(email):
-            break
-        elif back(email):
-            return
-        else:
-            print("Invalid Email")
-    while True:
-        phone = input("Enter your phone number: ")
-        if verify_phone(phone):
-            break
-        elif back(phone):
-            return
-        else:
-            print("Invalid Phone Number")
-    password = input("Enter your password: ")
-    if back(password):
-        return
+    def submit():
+        name = name_entry.get()
+        email = email_entry.get()
+        phone = phone_entry.get()
+        password = password_entry.get()
 
-    # check if email or phone already in use
-    try:
-        cursor.execute(
-            "INSERT INTO customers (user_name, user_email, phone_number, balance, password) VALUES (%s, %s, %s, %s, %s)",
-            (name, email, phone, '0.00', password)
-        )
-        connection.commit()
-        print("Account created successfully!")
-    except mysql.connector.IntegrityError:
-        print("Email already in use. Please choose a different email.")
-        
-#login
+        if not verify_email(email):
+            messagebox.showerror("Error", "Invalid Email")
+            return
+        if not verify_phone(phone):
+            messagebox.showerror("Error", "Invalid Phone Number")
+            return
+
+        try:
+            cursor.execute(
+                "INSERT INTO customers (user_name, user_email, phone_number, balance, password) VALUES (%s, %s, %s, %s, %s)",
+                (name, email, phone, '0.00', password)
+            )
+            connection.commit()
+            messagebox.showinfo("Success", "Account created successfully!")
+            acc_window.destroy()
+        except mysql.connector.IntegrityError:
+            messagebox.showerror("Error", "Email already in use")
+
+    acc_window = tk.Toplevel()
+    acc_window.title("Create Account")
+    
+    tk.Label(acc_window, text="Name:").pack()
+    name_entry = tk.Entry(acc_window)
+    name_entry.pack()
+
+    tk.Label(acc_window, text="Email:").pack()
+    email_entry = tk.Entry(acc_window)
+    email_entry.pack()
+
+    tk.Label(acc_window, text="Phone:").pack()
+    phone_entry = tk.Entry(acc_window)
+    phone_entry.pack()
+
+    tk.Label(acc_window, text="Password:").pack()
+    password_entry = tk.Entry(acc_window, show="*")
+    password_entry.pack()
+
+    tk.Button(acc_window, text="Submit", command=submit).pack()
+
+# Function to login
 def login():
-    global logged_in_user_email  # make global so we don't hve to ask user for email
+    def submit():
+        global logged_in_user_email
+        email = email_entry.get()
+        password = password_entry.get()
 
-    email = input("Enter your email: ")
-    password = input("Enter your password: ")
+        cursor.execute("SELECT user_name FROM customers WHERE user_email = %s AND BINARY password = %s", (email, password))
+        user = cursor.fetchone()
 
-    # fetch the user with the correct email and password
-    cursor.execute("SELECT user_name FROM customers WHERE user_email = %s AND BINARY password = %s", (email, password))
-    user = cursor.fetchone()
+        if user:
+            messagebox.showinfo("Success", f"Welcome, {user[0]}")
+            logged_in_user_email = email
+            login_window.destroy()
+            logged_in_menu()
+        else:
+            messagebox.showerror("Error", "Invalid email or password")
 
-    if user:
-        print(f"Login successful! Welcome, {user[0]}")
-        logged_in_user_email = email  # store the email to use elsewhere
-        logged_in_menu()
-    else:
-        print("Invalid email or password.")
+    login_window = tk.Toplevel()
+    login_window.title("Login")
+    
+    tk.Label(login_window, text="Email:").pack()
+    email_entry = tk.Entry(login_window)
+    email_entry.pack()
 
-#delete account
-def delete_account():
-    global logged_in_user_email
-    password = input("Enter your password: ")
+    tk.Label(login_window, text="Password:").pack()
+    password_entry = tk.Entry(login_window, show="*")
+    password_entry.pack()
 
-    cursor.execute("SELECT * FROM customers WHERE user_email = %s AND password = %s", (logged_in_user_email, password))
-    user = cursor.fetchone()
+    tk.Button(login_window, text="Login", command=submit).pack()
 
-    if user:
-        cursor.execute("DELETE FROM customers WHERE user_email = %s", (logged_in_user_email,))
-        connection.commit()
-        logged_in_user_email = None  # reset the email
-        print("Account deleted successfully!")
-        return True  # the account was deleted
-    else:
-        print("Invalid email or password.")
-        return False  # the account was not deleted
-
-#check Balance
+# Function to check balance
 def check_balance():
-    global logged_in_user_email 
-
     cursor.execute("SELECT balance FROM customers WHERE user_email = %s", (logged_in_user_email,))
     balance = cursor.fetchone()
-    print(f"Your current balance is: ${balance[0]}")
+    messagebox.showinfo("Balance", f"Your current balance is: ${balance[0]}")
 
-
-
-#deposit funds
+# Function to deposit funds
 def deposit():
-    global logged_in_user_email
+    def submit():
+        try:
+            amount = float(amount_entry.get())
+            if amount <= 0:
+                messagebox.showerror("Error", "Deposit amount must be greater than zero")
+            else:
+                cursor.execute("UPDATE customers SET balance = balance + %s WHERE user_email = %s", (amount, logged_in_user_email))
+                connection.commit()
+                messagebox.showinfo("Success", f"${amount:.2f} deposited successfully!")
+                deposit_window.destroy()
+        except ValueError:
+            messagebox.showerror("Error", "Invalid amount")
 
-    try:
-        deposit_funds = float(input("Enter deposit amount: "))
+    deposit_window = tk.Toplevel()
+    deposit_window.title("Deposit Funds")
+    
+    tk.Label(deposit_window, text="Deposit Amount:").pack()
+    amount_entry = tk.Entry(deposit_window)
+    amount_entry.pack()
 
-        if deposit_funds <= 0:
-                print("Deposit amount must be greater than zero.") #make sure its not 0 or less
+    tk.Button(deposit_window, text="Submit", command=submit).pack()
 
-        else:
-            cursor.execute("UPDATE customers SET balance = balance + %s WHERE user_email = %s", (deposit_funds, logged_in_user_email))
-            connection.commit()
-            print(f"${deposit_funds:.2f} deposited successfully!")
-
-    except ValueError:
-        print("Invalid amount")
-
-
-#withdraw
+# Function to withdraw funds
 def withdraw():
-    global logged_in_user_email
+    def submit():
+        try:
+            amount = float(amount_entry.get())
+            if amount <= 0:
+                messagebox.showerror("Error", "Withdraw amount must be greater than zero")
+            else:
+                cursor.execute("UPDATE customers SET balance = balance - %s WHERE user_email = %s", (amount, logged_in_user_email))
+                connection.commit()
+                messagebox.showinfo("Success", f"${amount:.2f} withdrawn successfully!")
+                withdraw_window.destroy()
+        except ValueError:
+            messagebox.showerror("Error", "Invalid amount")
 
-    try:
-        withdraw_funds = float(input("Enter withdraw amount: "))
+    withdraw_window = tk.Toplevel()
+    withdraw_window.title("Withdraw Funds")
+    
+    tk.Label(withdraw_window, text="Withdraw Amount:").pack()
+    amount_entry = tk.Entry(withdraw_window)
+    amount_entry.pack()
 
-        if withdraw_funds <= 0:
-                print("Withdraw amount must be greater than zero.")
+    tk.Button(withdraw_window, text="Submit", command=submit).pack()
 
-        # same thing as on top but with a negative sign
-        else:
-            cursor.execute("UPDATE customers SET balance = balance - %s WHERE user_email = %s", (withdraw_funds, logged_in_user_email))
-            connection.commit()
-            print(f"${withdraw_funds:.2f} deposited successfully!")
-
-    except ValueError:
-        print("Invalid amount")
-
-#Account details
-def account_details():
-    global logged_in_user_email 
-    print("\n ACCOUNT DETAILS")
-    cursor.execute("SELECT user_id FROM customers WHERE user_email = %s", (logged_in_user_email,))
-    user_id = cursor.fetchone()
-    print(f"User ID: {user_id[0]}")
-
-    cursor.execute("SELECT phone_number FROM customers WHERE user_email = %s", (logged_in_user_email,))
-    phone_number = cursor.fetchone()
-    print(f"Phone Number: {phone_number[0]}")
-
-    cursor.execute("SELECT user_email FROM customers WHERE user_email = %s", (logged_in_user_email,))
-    user_email = cursor.fetchone()
-    print(f"Email: {user_email[0]}")
-
-    cursor.execute("SELECT password FROM customers WHERE user_email = %s", (logged_in_user_email,))
-    password = cursor.fetchone()
-    print(f"Password: {password[0]}")
-
-
-#Change phone number
-def change_phone():
-    new_phone = input("Enter a phone number: ")
-    cursor.execute("UPDATE customers SET phone_number = %s WHERE user_email = %s", (new_phone, logged_in_user_email))
-    connection.commit()
-    print("Phone number changed successfully")
-
-#Change Email
-def change_email():
-    global logged_in_user_email
-    new_email = input("Enter an Email Address: ")
-    cursor.execute("UPDATE customers SET user_email = %s WHERE user_email = %s", (new_email, logged_in_user_email))
-    connection.commit()
-    logged_in_user_email = new_email #change the email to new email
-    print("Email address changed successfully")
-
-#Change password
-def change_password():
-    new_password = input("Enter a password: ")
-    cursor.execute("UPDATE customers SET password = %s WHERE user_email = %s", (new_password, logged_in_user_email))
-    connection.commit()
-    print("Password changed successfully")
-
-#logged in menu
+# Function for logged-in menu
 def logged_in_menu():
-    while True:
-        print("\n How may we help today?")
-        print("1. Check Balance")
-        print("2. Deposit Funds")
-        print("3. Withdraw Funds")
-        print("4. Account Details")
-        print("5. Log Out")
-        choice = input("Enter your choice: ")
+    menu_window = tk.Toplevel()
+    menu_window.title("Main Menu")
+    
+    tk.Button(menu_window, text="Check Balance", command=check_balance).pack()
+    tk.Button(menu_window, text="Deposit Funds", command=deposit).pack()
+    tk.Button(menu_window, text="Withdraw Funds", command=withdraw).pack()
 
-        if choice == "1":
-            check_balance()
-        elif choice == "2":
-            deposit()
-        elif choice == "3":
-            withdraw()
-        elif choice == "4":
-            account_details()
-            print("\n")
-            print("1. Change Phone Number")
-            print("2. Change Email Address")
-            print("3. Change Password")
-            print("4. Delete Account")
-            sub_choice = input("Enter your choice: ")
-            if sub_choice == "1":
-                change_phone()
-            elif sub_choice == "2":
-                change_email()
-            elif sub_choice == "3":
-                change_password()
-            elif sub_choice == "4":
-                if delete_account():
-                    break  # Exit the logged-in menu if the account is deleted
-        elif choice == "5":
-            print("Logging out...")
-            global logged_in_user_email
-            logged_in_user_email = None  # Reset the email
-            break
-        else:
-            print("Invalid choice. Please try again.")
+# Main menu function
+def main_menu():
+    root = tk.Tk()
+    root.title("Elite-102-GUI")
 
+    tk.Label(root, text="Welcome to Chase Bank").pack()
+    tk.Button(root, text="Create Account", command=create_acc).pack()
+    tk.Button(root, text="Login", command=login).pack()
+    tk.Button(root, text="Exit", command=root.quit).pack()
 
+    root.mainloop()
 
-#main menu
-def main():
-    while True:
-        print("\n Welcome to Chase Bank.")
-        print("1. Create Account")
-        print("2. Login")
-        print("3. Exit")
-        choice = input("Enter your choice: ")
-
-        if choice == "1":
-            create_acc()
-        elif choice == "2":
-            login()
-        elif choice == "3":
-            print("Goodbye!")
-            break
-        else:
-            print("Invalid choice. Please try again.")
-
-main()
-cursor.close()
-connection.close()
+main_menu()
