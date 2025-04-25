@@ -1,176 +1,320 @@
 import tkinter as tk
-from tkinter import messagebox
 import mysql.connector
 import re
 
-# Connect to MySQL
+# Connect to SQL
 connection = mysql.connector.connect(user='root', database='example', password='PassworD!1')
 cursor = connection.cursor()
 
-# Global variable to store logged-in user's email
 logged_in_user_email = None
 
-# Function to verify email
+# Make sure email and phone are valid
 def verify_email(email):
     pattern = r"[a-zA-Z0-9]+@[a-zA-Z]+\.(com|edu|net)"
     return re.match(pattern, email)
 
-# Function to verify phone
 def verify_phone(phone):
     pattern = r"^[1-9]\d{2}-\d{3}-\d{4}$"
     return re.match(pattern, phone)
 
-# Function to create account
-def create_acc():
+
+# Loads new frames every time the user clicks something
+def show_frame(frame_function):
+    # Remove widgets and create new content with frame_function()
+    for widget in main_frame.winfo_children():
+        widget.destroy()
+    frame_function()
+
+
+# Account (create) frame
+def create_acc_frame():
     def submit():
-        name = name_entry.get()
+        name = name_entry.get()  # Get info from user
         email = email_entry.get()
         phone = phone_entry.get()
         password = password_entry.get()
 
+        error_text.config(text="")   # Clears error messages once process starts
+        success_text.config(text="")
+
         if not verify_email(email):
-            messagebox.showerror("Error", "Invalid Email")
+            error_text.config(text="Invalid Email", fg="red")
             return
         if not verify_phone(phone):
-            messagebox.showerror("Error", "Invalid Phone Number")
+            error_text.config(text="Invalid Phone Number", fg="red")
             return
 
         try:
             cursor.execute(
-                "INSERT INTO customers (user_name, user_email, phone_number, balance, password) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO customers (user_name, user_email, phone_number, balance, password) VALUES (%s, %s, %s, %s, %s)", 
                 (name, email, phone, '0.00', password)
             )
             connection.commit()
-            messagebox.showinfo("Success", "Account created successfully!")
-            acc_window.destroy()
+            success_text.config(text="Account created successfully!", fg="green")
         except mysql.connector.IntegrityError:
-            messagebox.showerror("Error", "Email already in use")
+            error_text.config(text="Email or Phone already in use", fg="red")
 
-    acc_window = tk.Toplevel()
-    acc_window.title("Create Account")
+    tk.Label(main_frame, text="Create Account", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
     
-    tk.Label(acc_window, text="Name:").pack()
-    name_entry = tk.Entry(acc_window)
+    tk.Label(main_frame, text="Name:", fg='#ffffff', bg="#005EB8").pack()
+    name_entry = tk.Entry(main_frame)
     name_entry.pack()
 
-    tk.Label(acc_window, text="Email:").pack()
-    email_entry = tk.Entry(acc_window)
+    tk.Label(main_frame, text="Email:", fg='#ffffff', bg="#005EB8").pack()
+    email_entry = tk.Entry(main_frame)
     email_entry.pack()
 
-    tk.Label(acc_window, text="Phone:").pack()
-    phone_entry = tk.Entry(acc_window)
+    tk.Label(main_frame, text="Phone (xxx-xxx-xxxx):", fg='#ffffff', bg="#005EB8").pack()
+    phone_entry = tk.Entry(main_frame)
     phone_entry.pack()
 
-    tk.Label(acc_window, text="Password:").pack()
-    password_entry = tk.Entry(acc_window, show="*")
+    tk.Label(main_frame, text="Password:", fg='#ffffff', bg="#005EB8").pack()
+    password_entry = tk.Entry(main_frame, show="*")
     password_entry.pack()
 
-    tk.Button(acc_window, text="Submit", command=submit).pack()
+    error_text = tk.Label(main_frame, text="", fg="red", bg="#005EB8")
+    error_text.pack()
+    success_text = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    success_text.pack()
 
-# Function to login
-def login():
+    tk.Button(main_frame, text="Submit", command=submit).pack()
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(main_menu_frame)).pack()
+
+
+# Login menu frame
+def login_frame():
     def submit():
         global logged_in_user_email
         email = email_entry.get()
         password = password_entry.get()
 
+        error_text.config(text="")
+        success_text.config(text="")
+
         cursor.execute("SELECT user_name FROM customers WHERE user_email = %s AND BINARY password = %s", (email, password))
         user = cursor.fetchone()
 
         if user:
-            messagebox.showinfo("Success", f"Welcome, {user[0]}")
+            success_text.config(text=f"Welcome, {user[0]}", fg="green")
             logged_in_user_email = email
-            login_window.destroy()
-            logged_in_menu()
+            show_frame(logged_in_menu_frame)
         else:
-            messagebox.showerror("Error", "Invalid email or password")
+            error_text.config(text="Invalid email or password", fg="red")
 
-    login_window = tk.Toplevel()
-    login_window.title("Login")
+    tk.Label(main_frame, text="Login", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(padx=200, pady=10)
     
-    tk.Label(login_window, text="Email:").pack()
-    email_entry = tk.Entry(login_window)
+    tk.Label(main_frame, text="Email:", fg='#ffffff', bg="#005EB8").pack()
+    email_entry = tk.Entry(main_frame)
     email_entry.pack()
-
-    tk.Label(login_window, text="Password:").pack()
-    password_entry = tk.Entry(login_window, show="*")
+    
+    tk.Label(main_frame, text="Password:", fg='#ffffff', bg="#005EB8").pack()
+    password_entry = tk.Entry(main_frame, show="*")
     password_entry.pack()
 
-    tk.Button(login_window, text="Login", command=submit).pack()
+    error_text = tk.Label(main_frame, text="", fg="red", bg="#005EB8")
+    error_text.pack()
+    success_text = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    success_text.pack()
+    
+    tk.Button(main_frame, text="Login", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(main_menu_frame)).pack(pady=10)
 
-# Function to check balance
-def check_balance():
+
+# Logged in menu frame
+def logged_in_menu_frame():
+    tk.Label(main_frame, text="Main Menu", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    check_balance_frame()
+    tk.Button(main_frame, text="Deposit Funds", command=lambda: show_frame(deposit_frame)).pack(pady=5)
+    tk.Button(main_frame, text="Withdraw Funds", command=lambda: show_frame(withdraw_frame)).pack(pady=5)
+    tk.Button(main_frame, text="Account Details", command=lambda: show_frame(account_details_frame)).pack(pady=5)
+    tk.Button(main_frame, text="Log Out", command=lambda: show_frame(main_menu_frame)).pack(pady=5)
+
+
+# Check balance frame
+def check_balance_frame():
     cursor.execute("SELECT balance FROM customers WHERE user_email = %s", (logged_in_user_email,))
     balance = cursor.fetchone()
-    messagebox.showinfo("Balance", f"Your current balance is: ${balance[0]}")
 
-# Function to deposit funds
-def deposit():
+    tk.Label(main_frame, text="Current Balance", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text=f"${balance[0]}", fg='#ffffff', bg="#005EB8", font='Frutiger, 20').pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(logged_in_menu_frame)).pack(pady=5)
+
+
+# Deposit funds frame
+def deposit_frame():
     def submit():
         try:
-            amount = float(amount_entry.get())
+            amount = float(entry.get())
             if amount <= 0:
-                messagebox.showerror("Error", "Deposit amount must be greater than zero")
-            else:
-                cursor.execute("UPDATE customers SET balance = balance + %s WHERE user_email = %s", (amount, logged_in_user_email))
-                connection.commit()
-                messagebox.showinfo("Success", f"${amount:.2f} deposited successfully!")
-                deposit_window.destroy()
+                message_label.config(text="Deposit amount must be greater than zero.", fg="red")
+                return
+            cursor.execute("UPDATE customers SET balance = balance + %s WHERE user_email = %s", (amount, logged_in_user_email))
+            connection.commit()
+            message_label.config(text=f"${amount:.2f} deposited successfully!", fg="green")
+            entry.delete(0, tk.END)
         except ValueError:
-            messagebox.showerror("Error", "Invalid amount")
+            message_label.config(text="Invalid amount", fg="red")
+            
+    tk.Label(main_frame, text="Deposit Funds", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter deposit amount:", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame)
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Submit", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(logged_in_menu_frame)).pack(pady=5)
 
-    deposit_window = tk.Toplevel()
-    deposit_window.title("Deposit Funds")
-    
-    tk.Label(deposit_window, text="Deposit Amount:").pack()
-    amount_entry = tk.Entry(deposit_window)
-    amount_entry.pack()
 
-    tk.Button(deposit_window, text="Submit", command=submit).pack()
-
-# Function to withdraw funds
-def withdraw():
+# Withdraw funds frame
+def withdraw_frame():
     def submit():
         try:
-            amount = float(amount_entry.get())
+            amount = float(entry.get())
             if amount <= 0:
-                messagebox.showerror("Error", "Withdraw amount must be greater than zero")
-            else:
-                cursor.execute("UPDATE customers SET balance = balance - %s WHERE user_email = %s", (amount, logged_in_user_email))
-                connection.commit()
-                messagebox.showinfo("Success", f"${amount:.2f} withdrawn successfully!")
-                withdraw_window.destroy()
+                message_label.config(text="Withdraw amount must be greater than zero.", fg="red")
+                return
+            cursor.execute("UPDATE customers SET balance = balance - %s WHERE user_email = %s", (amount, logged_in_user_email))
+            connection.commit()
+            message_label.config(text=f"${amount:.2f} withdrawn successfully!", fg="green")
         except ValueError:
-            messagebox.showerror("Error", "Invalid amount")
+            message_label.config(text="Invalid amount", fg="red")
+            
+    tk.Label(main_frame, text="Withdraw Funds", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter withdraw amount:", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame)
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Submit", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(logged_in_menu_frame)).pack(pady=5)
 
-    withdraw_window = tk.Toplevel()
-    withdraw_window.title("Withdraw Funds")
+
+# Account details frame
+def account_details_frame():
+    cursor.execute("SELECT user_id FROM customers WHERE user_email = %s", (logged_in_user_email,))
+    user_id = cursor.fetchone()
+    cursor.execute("SELECT phone_number FROM customers WHERE user_email = %s", (logged_in_user_email,))
+    phone_number = cursor.fetchone()
+    cursor.execute("SELECT user_email FROM customers WHERE user_email = %s", (logged_in_user_email,))
+    user_email = cursor.fetchone()
+    cursor.execute("SELECT password FROM customers WHERE user_email = %s", (logged_in_user_email,))
+    password = cursor.fetchone()
+
+    tk.Label(main_frame, text="Account Details", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text=f"User ID: {user_id[0]}", fg='#ffffff', bg="#005EB8").pack(pady=2)
+    tk.Label(main_frame, text=f"Phone Number: {phone_number[0]}", fg='#ffffff', bg="#005EB8").pack(pady=2)
+    tk.Label(main_frame, text=f"Email: {user_email[0]}", fg='#ffffff', bg="#005EB8").pack(pady=2)
+    tk.Label(main_frame, text=f"Password: {password[0]}", fg='#ffffff', bg="#005EB8").pack(pady=2)
     
-    tk.Label(withdraw_window, text="Withdraw Amount:").pack()
-    amount_entry = tk.Entry(withdraw_window)
-    amount_entry.pack()
+    tk.Button(main_frame, text="Change Phone Number", command=lambda: show_frame(change_phone_frame)).pack(pady=2)
+    tk.Button(main_frame, text="Change Email Address", command=lambda: show_frame(change_email_frame)).pack(pady=2)
+    tk.Button(main_frame, text="Change Password", command=lambda: show_frame(change_password_frame)).pack(pady=2)
+    tk.Button(main_frame, text="Delete Account", command=lambda: show_frame(delete_account_frame)).pack(pady=2)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(logged_in_menu_frame)).pack(pady=5)
 
-    tk.Button(withdraw_window, text="Submit", command=submit).pack()
 
-# Function for logged-in menu
-def logged_in_menu():
-    menu_window = tk.Toplevel()
-    menu_window.title("Main Menu")
-    
-    tk.Button(menu_window, text="Check Balance", command=check_balance).pack()
-    tk.Button(menu_window, text="Deposit Funds", command=deposit).pack()
-    tk.Button(menu_window, text="Withdraw Funds", command=withdraw).pack()
+# Change phone number frame
+def change_phone_frame():
+    def submit():
+        new_phone = entry.get()
+        if not verify_phone(new_phone):
+            message_label.config(text="Invalid phone number", fg="red")
+            return
+        cursor.execute("UPDATE customers SET phone_number = %s WHERE user_email = %s", (new_phone, logged_in_user_email))
+        connection.commit()
+        message_label.config(text="Phone number changed successfully", fg="green")
+    tk.Label(main_frame, text="Change Phone Number", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter new phone number (xxx-xxx-xxxx):", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame)
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Submit", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(account_details_frame)).pack(pady=5)
 
-# Main menu function
-def main_menu():
-    root = tk.Tk()
-    root.title("Elite-102-GUI")
 
-    tk.Label(root, text="Welcome to Chase Bank").pack()
-    tk.Button(root, text="Create Account", command=create_acc).pack()
-    tk.Button(root, text="Login", command=login).pack()
-    tk.Button(root, text="Exit", command=root.quit).pack()
+# Change email address frame
+def change_email_frame():
+    def submit():
+        new_email = entry.get()
+        if not verify_email(new_email):
+            message_label.config(text="Invalid email", fg="red")
+            return
+        global logged_in_user_email
+        cursor.execute("UPDATE customers SET user_email = %s WHERE user_email = %s", (new_email, logged_in_user_email))
+        connection.commit()
+        logged_in_user_email = new_email
+        message_label.config(text="Email address changed successfully", fg="green")
+    tk.Label(main_frame, text="Change Email Address", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter new email:", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame)
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Submit", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(account_details_frame)).pack(pady=5)
 
-    root.mainloop()
 
-main_menu()
+# Change password frame
+def change_password_frame():
+    def submit():
+        new_password = entry.get()
+        cursor.execute("UPDATE customers SET password = %s WHERE user_email = %s", (new_password, logged_in_user_email))
+        connection.commit()
+        message_label.config(text="Password changed successfully", fg="green")
+    tk.Label(main_frame, text="Change Password", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter new password:", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame, show="*")
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Submit", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(account_details_frame)).pack(pady=5)
+
+
+# Delete account frame
+def delete_account_frame():
+    def submit():
+        global logged_in_user_email
+        password_input = entry.get()
+        cursor.execute("SELECT * FROM customers WHERE user_email = %s AND password = %s", (logged_in_user_email, password_input))
+        user = cursor.fetchone()
+        if user:
+            cursor.execute("DELETE FROM customers WHERE user_email = %s", (logged_in_user_email,))
+            connection.commit()
+            logged_in_user_email = None
+            message_label.config(text="Account deleted successfully!", fg="green")
+            show_frame(main_menu_frame)
+        else:
+            message_label.config(text="Invalid password", fg="red")
+    tk.Label(main_frame, text="Delete Account", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(pady=10)
+    tk.Label(main_frame, text="Enter your password to confirm:", fg='#ffffff', bg="#005EB8").pack()
+    entry = tk.Entry(main_frame, show="*")
+    entry.pack()
+    message_label = tk.Label(main_frame, text="", fg="green", bg="#005EB8")
+    message_label.pack()
+    tk.Button(main_frame, text="Delete", command=submit).pack(pady=5)
+    tk.Button(main_frame, text="Back", command=lambda: show_frame(account_details_frame)).pack(pady=5)
+
+
+# Main menu frame
+def main_menu_frame():
+    tk.Label(main_frame, text="Welcome to Chase Bank", font=('Frutiger', 18), fg='#ffffff', bg="#005EB8").pack(padx=75, pady=10)
+    tk.Button(main_frame, text="Create Account", command=lambda: show_frame(create_acc_frame)).pack(pady=5)
+    tk.Button(main_frame, text="Login", command=lambda: show_frame(login_frame)).pack(pady=5)
+    tk.Button(main_frame, text="Exit", command=root.quit).pack(pady=10)
+
+
+# Setting up tkinter
+root = tk.Tk()
+root.title("Banking System")
+
+main_frame = tk.Frame(root, bg="#005EB8")  # The background color
+main_frame.pack(fill="both", expand=True)
+
+main_menu_frame()
+
+root.mainloop()  # mainloop waits for user interactions
+
+cursor.close()
+connection.close()
