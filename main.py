@@ -102,11 +102,11 @@ def login_frame():
         else:
             error_text.config(text="Invalid email or password", fg="red")
 
-    tk.Label(main_frame, text="Login", font=('Georgia', 18), fg='#ffffff', bg="#005EB8").pack(padx=200, pady=10) 
+    tk.Label(main_frame, text="Login", font=('Georgia', 18), fg='#ffffff', bg="#005EB8").pack(pady=10) 
     
     tk.Label(main_frame, text="Email:", fg='#ffffff', bg="#005EB8").pack()
     user_email = tk.Entry(main_frame)
-    user_email.pack()
+    user_email.pack(padx=10)
     
     tk.Label(main_frame, text="Password:", fg='#ffffff', bg="#005EB8").pack()
     password_entry = tk.Entry(main_frame, show="*") # shows little *s while typing password
